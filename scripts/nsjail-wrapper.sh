@@ -9,6 +9,7 @@ readonly BROWSERCHANNEL_BIN="@browserchannel@"
 readonly DEFAULT_COMMAND="@default_command@"
 readonly NSJAIL_CONFIG_TEMPLATE="@config_template@"
 readonly BROWSER_FIFO_IN_JAIL="/browserchannel.fifo"
+readonly CODEX_CALLBACK_PORT="1455"
 
 die() {
   printf '%s\n' "$*" >&2
@@ -63,13 +64,18 @@ watch_browser_fifo() {
   done
 }
 
-find_available_port() {
-  "$PYTHON_BIN" - <<'PY'
+parent_callback_port_available() {
+  "$PYTHON_BIN" - "$CODEX_CALLBACK_PORT" <<'PY'
 import socket
+import sys
 
-with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-    sock.bind(("127.0.0.1", 0))
-    print(sock.getsockname()[1])
+port = int(sys.argv[1])
+
+try:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind(("127.0.0.1", port))
+except OSError:
+    raise SystemExit(1)
 PY
 }
 
@@ -113,7 +119,7 @@ optional_runtime_mounts() {
 render_nsjail_config() {
   local config=$1
   local fifo_host=$2
-  local tcp_map_in=$3
+  local parent_ports=$3
   local ca_file_src=$4
   local optional_mounts
 
@@ -127,8 +133,7 @@ render_nsjail_config() {
     NSJAIL_BROWSER_FIFO_HOST="$fifo_host" \
     NSJAIL_BROWSER_FIFO_JAIL="$BROWSER_FIFO_IN_JAIL" \
     NSJAIL_CA_FILE_SRC="$ca_file_src" \
-    NSJAIL_RENDER_OAUTH_PORT="$NSJAIL_OAUTH_PORT" \
-    NSJAIL_TCP_MAP_IN="$tcp_map_in" \
+    NSJAIL_PARENT_PORTS="$parent_ports" \
     NSJAIL_OPTIONAL_MOUNTS="$optional_mounts" \
     "$PYTHON_BIN" - <<'PY'
 import os
@@ -147,9 +152,7 @@ replacements = {
     "@ca_file_src@": pb_string(os.environ["NSJAIL_CA_FILE_SRC"]),
     "@browser_envar@": pb_string("BROWSER=" + os.environ["NSJAIL_BROWSERCHANNEL"]),
     "@browser_fifo_envar@": pb_string("BROWSERCHANNEL_FIFO=" + os.environ["NSJAIL_BROWSER_FIFO_JAIL"]),
-    "@nsjail_oauth_port_envar@": pb_string("NSJAIL_OAUTH_PORT=" + os.environ["NSJAIL_RENDER_OAUTH_PORT"]),
-    "@codex_oauth_port_envar@": pb_string("CODEX_OAUTH_PORT=" + os.environ["NSJAIL_RENDER_OAUTH_PORT"]),
-    "@tcp_map_in@": pb_string(os.environ["NSJAIL_TCP_MAP_IN"]),
+    "@parent_ports@": pb_string(os.environ["NSJAIL_PARENT_PORTS"]),
     "@optional_mounts@": os.environ["NSJAIL_OPTIONAL_MOUNTS"],
 }
 
@@ -183,18 +186,16 @@ mkfifo "$fifo"
 watch_browser_fifo "$fifo" &
 watcher_pid=$!
 
-if [[ -n "${NSJAIL_OAUTH_PORT:-}" ]]; then
-  case "$NSJAIL_OAUTH_PORT" in
-    *[!0-9]*) die "NSJAIL_OAUTH_PORT must be numeric: $NSJAIL_OAUTH_PORT" ;;
-  esac
+if [[ -n "${NSJAIL_PARENT_PORTS:-}" ]]; then
+  parent_ports=$NSJAIL_PARENT_PORTS
+elif parent_callback_port_available; then
+  parent_ports="127.0.0.1/$CODEX_CALLBACK_PORT:$CODEX_CALLBACK_PORT"
 else
-  NSJAIL_OAUTH_PORT=$(find_available_port)
-  export NSJAIL_OAUTH_PORT
+  printf 'nsjail-wrapper: parent 127.0.0.1:%s is occupied; skipping TCP port mapping\n' "$CODEX_CALLBACK_PORT" >&2
+  parent_ports="none"
 fi
-
-tcp_map_in=${NSJAIL_TCP_MAP_IN:-${NSJAIL_TCP_PORTS:-"127.0.0.1/$NSJAIL_OAUTH_PORT:$NSJAIL_OAUTH_PORT"}}
 ca_file_src=$(resolve_ca_file)
-render_nsjail_config "$config" "$fifo" "$tcp_map_in" "$ca_file_src"
+render_nsjail_config "$config" "$fifo" "$parent_ports" "$ca_file_src"
 
 read -r -a default_argv <<< "$DEFAULT_COMMAND"
 if [[ "$#" -gt 0 ]]; then

@@ -33,24 +33,28 @@ runs the flake-provided `codex` package and preserves all arguments after `--`.
 - The parent rejects `file:`, socket-style, and localhost browser URLs,
   including `http://localhost`, `http://127.0.0.1`, and `http://[::1]`.
 - nsjail's native pasta backend handles networking and loopback port forwarding.
+- The packaged `pasta` shim adds `--host-lo-to-ns-lo` so callbacks from the
+  host browser can reach services that listen on jailed `127.0.0.1`.
 
 ## Port Controls
 
-By default the wrapper finds a free host TCP port and maps:
+Codex ChatGPT login listens on port `1455` in the jail. The wrapper first tries
+to map parent loopback port `1455` to jailed `1455`:
 
 ```text
-127.0.0.1:$NSJAIL_OAUTH_PORT -> 127.0.0.1:$NSJAIL_OAUTH_PORT in the namespace
+127.0.0.1:1455 on the parent -> 127.0.0.1:1455 in the namespace
 ```
 
-The chosen port is exported inside the jail as both `NSJAIL_OAUTH_PORT` and
-`CODEX_OAUTH_PORT`.
+If parent port `1455` is already taken, the wrapper prints an informational
+message and skips inbound TCP forwarding for that instance. Outbound networking
+from the jail remains enabled.
 
-Override the mapping when needed:
+Only the instance mapped from parent `1455` is expected to complete Codex's
+browser OAuth login. Other instances should reuse existing credentials or use a
+non-browser login flow.
+
+Override the parent-to-namespace TCP forwarding spec when needed:
 
 ```sh
-NSJAIL_OAUTH_PORT=1455 nix run .#nsjail-codex
-NSJAIL_TCP_MAP_IN='127.0.0.1/1455:1455' nix run .#nsjail-codex
+NSJAIL_PARENT_PORTS='127.0.0.1/1455:1455' nix run .#nsjail-codex
 ```
-
-`NSJAIL_TCP_PORTS` is still accepted as a compatibility alias for
-`NSJAIL_TCP_MAP_IN`.

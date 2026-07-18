@@ -17,9 +17,8 @@
         let
           pkgs = import nixpkgs { inherit system; };
 
-          pasta = pkgs.runCommand "pasta-for-nsjail" { } ''
-            mkdir -p $out/bin
-            ln -s ${pkgs.passt}/bin/passt $out/bin/pasta
+          pasta = pkgs.writeShellScriptBin "pasta" ''
+            exec ${pkgs.passt}/bin/pasta --host-lo-to-ns-lo "$@"
           '';
 
           runtimePath = lib.makeBinPath [
@@ -30,8 +29,8 @@
             pkgs.gnugrep
             pkgs.gnused
             pkgs.nsjail
-            pkgs.passt
             pasta
+            pkgs.passt
             pkgs.python3
             pkgs.xdg-utils
           ];

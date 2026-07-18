@@ -35,17 +35,11 @@ rlimit_stack_type: HARD
 
 envar: @browser_envar@
 envar: @browser_fifo_envar@
-envar: @nsjail_oauth_port_envar@
-envar: @codex_oauth_port_envar@
 
 user_net {
   enable: true
   enable_dns: true
-  ip: "10.255.255.2"
-  gw: "10.255.255.1"
-  ip6: "fc00::2"
-  gw6: "fc00::1"
-  tcp_ports: @tcp_map_in@
+  tcp_ports: @parent_ports@
   udp_ports: "none"
 }
 
