@@ -17,14 +17,21 @@
         let
           pkgs = import nixpkgs { inherit system; };
 
+          pasta = pkgs.runCommandNoCC "pasta-for-nsjail" { } ''
+            mkdir -p $out/bin
+            ln -s ${pkgs.passt}/bin/passt $out/bin/pasta
+          '';
+
           runtimePath = lib.makeBinPath [
             pkgs.bashInteractive
+            pkgs.codex
             pkgs.coreutils
             pkgs.findutils
             pkgs.gnugrep
             pkgs.gnused
             pkgs.nsjail
             pkgs.passt
+            pasta
             pkgs.python3
             pkgs.xdg-utils
           ];
@@ -73,7 +80,7 @@
 
           nsjail-codex = mkNsJailWrapper {
             name = "nsjail-codex";
-            defaultCommand = "codex";
+            defaultCommand = "${pkgs.codex}/bin/codex";
           };
         in
         {

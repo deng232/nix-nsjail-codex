@@ -10,7 +10,7 @@ nix run .#nsjail-codex -- [codex args...]
 ```
 
 `nsjail-env` opens an interactive Bash shell inside the jail. `nsjail-codex`
-runs `codex` and preserves all arguments after `--`.
+runs the flake-provided `codex` package and preserves all arguments after `--`.
 
 ## Runtime Behavior
 
