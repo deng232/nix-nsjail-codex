@@ -73,6 +73,19 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
 PY
 }
 
+resolve_ca_file() {
+  local path
+
+  for path in /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-bundle.crt; do
+    if [[ -e "$path" ]]; then
+      readlink -f "$path"
+      return 0
+    fi
+  done
+
+  die 'could not find /etc/ssl/certs/ca-certificates.crt or /etc/ssl/certs/ca-bundle.crt'
+}
+
 socket_mount() {
   local path=$1
   [[ -S "$path" ]] || return 0
@@ -101,6 +114,7 @@ render_nsjail_config() {
   local config=$1
   local fifo_host=$2
   local tcp_map_in=$3
+  local ca_file_src=$4
   local optional_mounts
 
   optional_mounts=$(optional_runtime_mounts)
@@ -112,6 +126,7 @@ render_nsjail_config() {
     NSJAIL_BROWSERCHANNEL="$BROWSERCHANNEL_BIN" \
     NSJAIL_BROWSER_FIFO_HOST="$fifo_host" \
     NSJAIL_BROWSER_FIFO_JAIL="$BROWSER_FIFO_IN_JAIL" \
+    NSJAIL_CA_FILE_SRC="$ca_file_src" \
     NSJAIL_RENDER_OAUTH_PORT="$NSJAIL_OAUTH_PORT" \
     NSJAIL_TCP_MAP_IN="$tcp_map_in" \
     NSJAIL_OPTIONAL_MOUNTS="$optional_mounts" \
@@ -129,6 +144,7 @@ replacements = {
     "@home_codex@": pb_string(os.environ["NSJAIL_HOME_CODEX"]),
     "@browser_fifo_host@": pb_string(os.environ["NSJAIL_BROWSER_FIFO_HOST"]),
     "@browser_fifo_jail@": pb_string(os.environ["NSJAIL_BROWSER_FIFO_JAIL"]),
+    "@ca_file_src@": pb_string(os.environ["NSJAIL_CA_FILE_SRC"]),
     "@browser_envar@": pb_string("BROWSER=" + os.environ["NSJAIL_BROWSERCHANNEL"]),
     "@browser_fifo_envar@": pb_string("BROWSERCHANNEL_FIFO=" + os.environ["NSJAIL_BROWSER_FIFO_JAIL"]),
     "@nsjail_oauth_port_envar@": pb_string("NSJAIL_OAUTH_PORT=" + os.environ["NSJAIL_RENDER_OAUTH_PORT"]),
@@ -177,7 +193,8 @@ else
 fi
 
 tcp_map_in=${NSJAIL_TCP_MAP_IN:-${NSJAIL_TCP_PORTS:-"127.0.0.1/$NSJAIL_OAUTH_PORT:$NSJAIL_OAUTH_PORT"}}
-render_nsjail_config "$config" "$fifo" "$tcp_map_in"
+ca_file_src=$(resolve_ca_file)
+render_nsjail_config "$config" "$fifo" "$tcp_map_in" "$ca_file_src"
 
 read -r -a default_argv <<< "$DEFAULT_COMMAND"
 if [[ "$#" -gt 0 ]]; then

@@ -130,6 +130,7 @@ mount { src: "/etc/hosts" dst: "/etc/hosts" is_bind: true is_dir: false rw: fals
 mount { src: "/etc/nsswitch.conf" dst: "/etc/nsswitch.conf" is_bind: true is_dir: false rw: false mandatory: false }
 mount { src: "/etc/passwd" dst: "/etc/passwd" is_bind: true is_dir: false rw: false mandatory: false }
 mount { src: "/etc/group" dst: "/etc/group" is_bind: true is_dir: false rw: false mandatory: false }
-mount { src: "/etc/ssl/certs" dst: "/etc/ssl/certs" is_bind: true is_dir: true rw: false mandatory: false }
+mount { src: @ca_file_src@ dst: "/etc/ssl/certs/ca-certificates.crt" is_bind: true is_dir: false rw: false }
+mount { src: @ca_file_src@ dst: "/etc/ssl/certs/ca-bundle.crt" is_bind: true is_dir: false rw: false }
 
 @optional_mounts@

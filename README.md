@@ -24,6 +24,8 @@ runs the flake-provided `codex` package and preserves all arguments after `--`.
 - The current working directory is mounted read-write and used as the jailed
   working directory.
 - Parent environment variables are kept, including `PATH`.
+- CA certificates are resolved from the host `/etc/ssl/certs` symlink target
+  with `readlink -f` and mounted read-only at the default CA filenames.
 - Wayland, PipeWire, and PulseAudio sockets are mounted only when they exist.
 - `$BROWSER` is set to `browserchannel` inside the jail.
 - `browserchannel` writes browser URLs to a FIFO mounted into the jail.

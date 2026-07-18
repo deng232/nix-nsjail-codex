@@ -17,7 +17,7 @@
         let
           pkgs = import nixpkgs { inherit system; };
 
-          pasta = pkgs.runCommandNoCC "pasta-for-nsjail" { } ''
+          pasta = pkgs.runCommand "pasta-for-nsjail" { } ''
             mkdir -p $out/bin
             ln -s ${pkgs.passt}/bin/passt $out/bin/pasta
           '';
