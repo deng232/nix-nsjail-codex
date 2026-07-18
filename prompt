@@ -1,0 +1,32 @@
+use nsjail to create an isolated enviornment for agent program.
+1. mount /nix read only
+2. mount $HOME/.codex read write
+3. mount wayland protocl and audio protocol through $XDG_RUNTIME_DIR
+4. isolate all namespaces, and setup networking using pasta.
+5. setup browser oauth
+    1. mount fifo file
+    2. fake browser name browserchannel will write url to the fifo file by setting $BROWSER=browserchannel inside isoated ns.
+    3. parent process watch the fifo file, and should only accept link which browser supported, no file links or socket link accepted.
+    4. both process make by script, you can use nix makescriptbin sort of things to create them.
+6.  inherit parent environment such as $PATH.
+7.  setup pre-run process to find avaliable port for networking.
+
+use nix flake to setup, expose both nsjail-env and nsjail-codex; which first process spawn bash so I can look into the environment if something is wrong; the second one spawn codex directly.
+use nsjail proton buff file for declarative configuration.
+
+1.nixos only for now.
+2. xdg-open
+3. Do not allow http://localhost, http://127.0.0.1, or http://[::1]
+4. both if they exists
+5. fallback to no GUI
+6.
+setup port mapping to handle loopback, for example
+    this is rootlesskit example
+     exec ${pkgs.rootlesskit}/bin/rootlesskit \
+        --net=slirp4netns \
+        --slirp4netns-binary ${pkgs.slirp4netns}/bin/slirp4netns \
+        --disable-host-loopback \
+        --port-driver=builtin \
+        -p 127.0.0.1:1455:1455/tcp \
+        ${innerDrv}/bin/${name}
+7. preserve arguments

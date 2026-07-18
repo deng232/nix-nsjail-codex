@@ -1,0 +1,134 @@
+name: "codex-nsjail"
+description: "Codex agent environment with nsjail-native pasta networking"
+
+mode: ONCE
+hostname: "codex-nsjail"
+cwd: @cwd@
+time_limit: 0
+nice_level: 0
+log_level: WARNING
+keep_env: true
+skip_setsid: true
+forward_signals: true
+
+clone_newnet: true
+clone_newuser: true
+clone_newns: true
+clone_newpid: true
+clone_newipc: true
+clone_newuts: true
+clone_newcgroup: true
+
+uidmap { inside_id: "" outside_id: "" count: 1 }
+gidmap { inside_id: "" outside_id: "" count: 1 }
+
+mount_proc: true
+
+rlimit_as_type: INF
+rlimit_core: 0
+rlimit_core_type: VALUE
+rlimit_cpu_type: INF
+rlimit_fsize_type: INF
+rlimit_nofile_type: HARD
+rlimit_nproc_type: HARD
+rlimit_stack_type: HARD
+
+envar: @browser_envar@
+envar: @browser_fifo_envar@
+envar: @nsjail_oauth_port_envar@
+envar: @codex_oauth_port_envar@
+
+user_net {
+  ip: "10.255.255.2"
+  gw: "10.255.255.1"
+  ip6: "fc00::2"
+  gw6: "fc00::1"
+  tcp_ports: @tcp_map_in@
+  udp_ports: "none"
+  enable_dns: true
+}
+
+mount {
+  src: "/nix"
+  dst: "/nix"
+  is_bind: true
+  is_dir: true
+  rw: false
+}
+
+mount {
+  src: "/etc/profiles/per-user/deng/bin"
+  dst: "/etc/profiles/per-user/deng/bin"
+  is_bind: true
+  is_dir: true
+  rw: false
+}
+
+mount {
+  src: "/run/current-system/sw/bin"
+  dst: "/run/current-system/sw/bin"
+  is_bind: true
+  is_dir: true
+  rw: false
+}
+
+mount {
+  src: @cwd@
+  dst: @cwd@
+  is_bind: true
+  is_dir: true
+  rw: true
+}
+
+mount {
+  src: @home_codex@
+  dst: @home_codex@
+  is_bind: true
+  is_dir: true
+  rw: true
+}
+
+mount {
+  src: @browser_fifo_host@
+  dst: @browser_fifo_jail@
+  is_bind: true
+  is_dir: false
+  rw: true
+}
+
+mount {
+  dst: "/tmp"
+  fstype: "tmpfs"
+  is_dir: true
+  rw: true
+  nosuid: true
+  nodev: true
+}
+
+mount {
+  dst: "/dev/shm"
+  fstype: "tmpfs"
+  is_dir: true
+  rw: true
+  nosuid: true
+  nodev: true
+  mandatory: false
+}
+
+mount { src: "/dev/null" dst: "/dev/null" is_bind: true is_dir: false rw: true }
+mount { src: "/dev/zero" dst: "/dev/zero" is_bind: true is_dir: false rw: true }
+mount { src: "/dev/full" dst: "/dev/full" is_bind: true is_dir: false rw: true mandatory: false }
+mount { src: "/dev/random" dst: "/dev/random" is_bind: true is_dir: false rw: true }
+mount { src: "/dev/urandom" dst: "/dev/urandom" is_bind: true is_dir: false rw: true }
+mount { src: "/dev/tty" dst: "/dev/tty" is_bind: true is_dir: false rw: true mandatory: false }
+mount { src: "/dev/ptmx" dst: "/dev/ptmx" is_bind: true is_dir: false rw: true mandatory: false }
+mount { src: "/dev/pts" dst: "/dev/pts" is_bind: true is_dir: true rw: true mandatory: false }
+
+mount { src: "/etc/resolv.conf" dst: "/etc/resolv.conf" is_bind: true is_dir: false rw: false mandatory: false }
+mount { src: "/etc/hosts" dst: "/etc/hosts" is_bind: true is_dir: false rw: false mandatory: false }
+mount { src: "/etc/nsswitch.conf" dst: "/etc/nsswitch.conf" is_bind: true is_dir: false rw: false mandatory: false }
+mount { src: "/etc/passwd" dst: "/etc/passwd" is_bind: true is_dir: false rw: false mandatory: false }
+mount { src: "/etc/group" dst: "/etc/group" is_bind: true is_dir: false rw: false mandatory: false }
+mount { src: "/etc/ssl/certs" dst: "/etc/ssl/certs" is_bind: true is_dir: true rw: false mandatory: false }
+
+@optional_mounts@
