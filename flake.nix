@@ -67,6 +67,7 @@
                   --subst-var-by python ${pkgs.python3}/bin/python3 \
                   --subst-var-by browserchannel ${browserchannel}/bin/browserchannel \
                   --subst-var-by config_template ${./config/nsjail.pbtxt.in} \
+                  --subst-var-by env_allowlist ${./config/env.allowlist} \
                   --subst-var-by default_command '${defaultCommand}'
                 chmod +x $out/bin/${name}
               '';

@@ -8,6 +8,7 @@ readonly PYTHON_BIN="@python@"
 readonly BROWSERCHANNEL_BIN="@browserchannel@"
 readonly DEFAULT_COMMAND="@default_command@"
 readonly NSJAIL_CONFIG_TEMPLATE="@config_template@"
+readonly NSJAIL_ENV_ALLOWLIST="@env_allowlist@"
 readonly BROWSER_FIFO_IN_JAIL="/browserchannel.fifo"
 readonly CODEX_CALLBACK_PORT="1455"
 
@@ -130,6 +131,7 @@ render_nsjail_config() {
     NSJAIL_CWD="$PWD" \
     NSJAIL_HOME_CODEX="$HOME/.codex" \
     NSJAIL_BROWSERCHANNEL="$BROWSERCHANNEL_BIN" \
+    NSJAIL_ENV_ALLOWLIST="$NSJAIL_ENV_ALLOWLIST" \
     NSJAIL_BROWSER_FIFO_HOST="$fifo_host" \
     NSJAIL_BROWSER_FIFO_JAIL="$BROWSER_FIFO_IN_JAIL" \
     NSJAIL_CA_FILE_SRC="$ca_file_src" \
@@ -137,11 +139,37 @@ render_nsjail_config() {
     NSJAIL_OPTIONAL_MOUNTS="$optional_mounts" \
     "$PYTHON_BIN" - <<'PY'
 import os
+import re
 from pathlib import Path
+
+
+ENV_NAME_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\Z")
+GENERATED_ENV_NAMES = {"BROWSER", "BROWSERCHANNEL_FIFO"}
 
 
 def pb_string(value: str) -> str:
     return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
+def render_envars() -> str:
+    lines = []
+    seen = set()
+    allowlist_path = Path(os.environ["NSJAIL_ENV_ALLOWLIST"])
+
+    for lineno, line in enumerate(allowlist_path.read_text().splitlines(), 1):
+        name = line.strip()
+        if not name or name.startswith("#"):
+            continue
+        if not ENV_NAME_RE.fullmatch(name):
+            raise SystemExit(f"{allowlist_path}:{lineno}: invalid environment variable name: {line!r}")
+        if name in GENERATED_ENV_NAMES or name in seen or name not in os.environ:
+            continue
+        seen.add(name)
+        lines.append("envar: " + pb_string(name))
+
+    lines.append("envar: " + pb_string("BROWSER=" + os.environ["NSJAIL_BROWSERCHANNEL"]))
+    lines.append("envar: " + pb_string("BROWSERCHANNEL_FIFO=" + os.environ["NSJAIL_BROWSER_FIFO_JAIL"]))
+    return "\n".join(lines)
 
 
 replacements = {
@@ -150,8 +178,7 @@ replacements = {
     "@browser_fifo_host@": pb_string(os.environ["NSJAIL_BROWSER_FIFO_HOST"]),
     "@browser_fifo_jail@": pb_string(os.environ["NSJAIL_BROWSER_FIFO_JAIL"]),
     "@ca_file_src@": pb_string(os.environ["NSJAIL_CA_FILE_SRC"]),
-    "@browser_envar@": pb_string("BROWSER=" + os.environ["NSJAIL_BROWSERCHANNEL"]),
-    "@browser_fifo_envar@": pb_string("BROWSERCHANNEL_FIFO=" + os.environ["NSJAIL_BROWSER_FIFO_JAIL"]),
+    "@envars@": render_envars(),
     "@parent_ports@": pb_string(os.environ["NSJAIL_PARENT_PORTS"]),
     "@optional_mounts@": os.environ["NSJAIL_OPTIONAL_MOUNTS"],
 }
