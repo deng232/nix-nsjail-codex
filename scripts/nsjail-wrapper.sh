@@ -204,4 +204,9 @@ else
   command_argv=("${default_argv[@]}")
 fi
 
-exec "$NSJAIL_BIN" --config "$config" -- "${command_argv[@]}"
+set +e
+"$NSJAIL_BIN" --config "$config" -- "${command_argv[@]}"
+status=$?
+set -e
+
+exit "$status"
