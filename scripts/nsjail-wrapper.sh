@@ -8,7 +8,7 @@ readonly PYTHON_BIN="@python@"
 readonly BROWSERCHANNEL_BIN="@browserchannel@"
 readonly DEFAULT_COMMAND="@default_command@"
 readonly NSJAIL_CONFIG_TEMPLATE="@config_template@"
-readonly NSJAIL_ENV_ALLOWLIST="@env_allowlist@"
+readonly NSJAIL_ENV_ALLOWLIST_FILE="@env_allowlist@"
 readonly BROWSER_FIFO_IN_JAIL="/browserchannel.fifo"
 readonly CODEX_CALLBACK_PORT="1455"
 
@@ -131,7 +131,7 @@ render_nsjail_config() {
     NSJAIL_CWD="$PWD" \
     NSJAIL_HOME_CODEX="$HOME/.codex" \
     NSJAIL_BROWSERCHANNEL="$BROWSERCHANNEL_BIN" \
-    NSJAIL_ENV_ALLOWLIST="$NSJAIL_ENV_ALLOWLIST" \
+    NSJAIL_ENV_ALLOWLIST="$NSJAIL_ENV_ALLOWLIST_FILE" \
     NSJAIL_BROWSER_FIFO_HOST="$fifo_host" \
     NSJAIL_BROWSER_FIFO_JAIL="$BROWSER_FIFO_IN_JAIL" \
     NSJAIL_CA_FILE_SRC="$ca_file_src" \
