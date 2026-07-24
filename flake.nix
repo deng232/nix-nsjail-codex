@@ -1,9 +1,26 @@
 {
   description = "NixOS nsjail wrappers for Codex agent sessions";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    rust-overlay = {
+      url = "github:oxalica/rust-overlay";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    codex = {
+      url = "git+file:./codex";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.rust-overlay.follows = "rust-overlay";
+    };
+  };
 
-  outputs = { self, nixpkgs }:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      rust-overlay,
+      codex,
+    }:
     let
       lib = nixpkgs.lib;
       systems = [
@@ -13,9 +30,11 @@
       forAllSystems = lib.genAttrs systems;
     in
     {
-      packages = forAllSystems (system:
+      packages = forAllSystems (
+        system:
         let
           pkgs = import nixpkgs { inherit system; };
+          codexPackage = codex.packages.${system}.default;
 
           pasta = pkgs.writeShellScriptBin "pasta" ''
             exec ${pkgs.passt}/bin/pasta --host-lo-to-ns-lo "$@"
@@ -23,7 +42,7 @@
 
           runtimePath = lib.makeBinPath [
             pkgs.bashInteractive
-            pkgs.codex
+            codexPackage
             pkgs.coreutils
             pkgs.findutils
             pkgs.gnugrep
@@ -50,8 +69,9 @@
           };
 
           mkNsJailWrapper =
-            { name
-            , defaultCommand
+            {
+              name,
+              defaultCommand,
             }:
             pkgs.stdenvNoCC.mkDerivation {
               pname = name;
@@ -80,15 +100,17 @@
 
           nsjail-codex = mkNsJailWrapper {
             name = "nsjail-codex";
-            defaultCommand = "${pkgs.codex}/bin/codex";
+            defaultCommand = "${codexPackage}/bin/codex";
           };
         in
         {
           default = nsjail-codex;
           inherit browserchannel nsjail-env nsjail-codex;
-        });
+        }
+      );
 
-      apps = forAllSystems (system:
+      apps = forAllSystems (
+        system:
         let
           packages = self.packages.${system};
         in
@@ -105,6 +127,7 @@
             type = "app";
             program = "${packages.nsjail-codex}/bin/nsjail-codex";
           };
-        });
+        }
+      );
     };
 }
